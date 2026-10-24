@@ -29,6 +29,51 @@ export function rectDistance(rect1: Rectangle, rect2: Rectangle) {
   return Math.sqrt(dx * dx + dy * dy)
 }
 
+export function intersectsAnyDisplay(bounds: Rectangle, displays: Pick<Display, 'bounds'>[]) {
+  return displays.some((display) => rectsIntersect(bounds, display.bounds))
+}
+
+export function getMaxDisplayDimension() {
+  return Math.max(
+    ...screen.getAllDisplays().flatMap((display) => [display.bounds.width, display.bounds.height])
+  )
+}
+
+/**
+ * 净化从存储中恢复的窗口内容区域, 防止脏数据(例如 DPI 切换异常期间误存的值)导致窗口恢复成异常大小。
+ * 无法识别的数据返回 null, 由调用方回退到默认尺寸与位置。
+ */
+export function sanitizeRestoredContentBounds(
+  bounds: Rectangle | null | undefined,
+  minWidth: number,
+  minHeight: number,
+  maxDisplayDimension: number
+): Rectangle | null {
+  if (!bounds) {
+    return null
+  }
+
+  const { x, y, width, height } = bounds
+  if (![x, y, width, height].every((value) => Number.isFinite(value))) {
+    return null
+  }
+
+  if (width <= 0 || height <= 0) {
+    return null
+  }
+
+  if (width > maxDisplayDimension * 3 || height > maxDisplayDimension * 3) {
+    return null
+  }
+
+  return {
+    x: Math.round(x),
+    y: Math.round(y),
+    width: Math.max(Math.round(width), minWidth),
+    height: Math.max(Math.round(height), minHeight)
+  }
+}
+
 // 由于 chromium 的限制, 设置 bounds 并不会在最小化时生效。所以需要使用监听器来处理
 const pendingRepositionWindows = new WeakSet<BrowserWindow>()
 
@@ -83,6 +128,54 @@ export function repositionWindowIfInvisible(win: BrowserWindow) {
     newY = workArea.y
   }
 
+  if (win.isMinimized()) {
+    if (!pendingRepositionWindows.has(win)) {
+      pendingRepositionWindows.add(win)
+      win.once('restore', () => {
+        pendingRepositionWindows.delete(win)
+        win.setBounds({ x: newX, y: newY, width: newWidth, height: newHeight })
+      })
+    }
+  } else {
+    win.setBounds({ x: newX, y: newY, width: newWidth, height: newHeight })
+  }
+}
+
+/**
+ * 仅当窗口完全无法触及(与所有显示器均无交集)时, 才将其挪回最近显示器的可视区域。
+ * 与 repositionWindowIfInvisible 不同, 该方法不会挪动用户刻意停靠在屏幕边缘或任务栏上的窗口,
+ * 适合在窗口创建时自动调用, 避免破坏已记忆的窗口位置。
+ */
+export function rescueWindowIfUnreachable(win: BrowserWindow) {
+  if (!win || win.isDestroyed()) return
+
+  const winBounds = win.getBounds()
+  const displays = screen.getAllDisplays()
+
+  if (intersectsAnyDisplay(winBounds, displays)) {
+    return
+  }
+
+  let nearestDisplay: Display | null = null
+  let minDistance = Infinity
+
+  for (const display of displays) {
+    const distance = rectDistance(winBounds, display.workArea)
+    if (distance < minDistance) {
+      minDistance = distance
+      nearestDisplay = display
+    }
+  }
+  if (!nearestDisplay) return
+
+  const workArea = nearestDisplay.workArea
+
+  const newWidth = Math.min(winBounds.width, workArea.width)
+  const newHeight = Math.min(winBounds.height, workArea.height)
+  const newX = Math.min(Math.max(winBounds.x, workArea.x), workArea.x + workArea.width - newWidth)
+  const newY = Math.min(Math.max(winBounds.y, workArea.y), workArea.y + workArea.height - newHeight)
+
+  // 由于 chromium 的限制, 设置 bounds 并不会在最小化时生效。所以需要使用监听器来处理
   if (win.isMinimized()) {
     if (!pendingRepositionWindows.has(win)) {
       pendingRepositionWindows.add(win)

@@ -28,7 +28,12 @@ import { MobxUtilsMain } from '../mobx-utils'
 import { SettingSchema } from '../setting-factory'
 import { SetterSettingService } from '../setting-factory/setter-setting-service'
 import type { WindowManagerMainContext } from './context'
-import { repositionWindowIfInvisible } from './window-position-service'
+import {
+  getMaxDisplayDimension,
+  repositionWindowIfInvisible,
+  rescueWindowIfUnreachable,
+  sanitizeRestoredContentBounds
+} from './window-position-service'
 
 /**
  * 具备的一些基础属性
@@ -327,7 +332,8 @@ export abstract class BaseAkariWindow<
       runInAction(() => (this.state.ready = true))
 
       if (this._window && this._config.repositionWindowIfInvisible) {
-        repositionWindowIfInvisible(this._window)
+        // 仅抢救完全无法触及的窗口, 不干扰用户调整过的窗口位置与大小
+        rescueWindowIfUnreachable(this._window)
       }
     })
 
@@ -363,13 +369,22 @@ export abstract class BaseAkariWindow<
     runInAction(() => (this.state.focus = this._window!.isFocused() ? 'focused' : 'blurred'))
 
     if (this.state.trackedBounds) {
-      if (this._config.rememberPosition && this._config.rememberSize) {
-        this._window.setContentBounds(this.state.trackedBounds)
-      } else if (this._config.rememberPosition) {
-        this._window.setPosition(this.state.trackedBounds.x, this.state.trackedBounds.y)
-      } else if (this._config.rememberSize) {
-        this._window.setContentSize(this.state.trackedBounds.width, this.state.trackedBounds.height)
-        this._window.center()
+      const restoredBounds = sanitizeRestoredContentBounds(
+        this.state.trackedBounds,
+        this._config.minWidth,
+        this._config.minHeight,
+        getMaxDisplayDimension()
+      )
+
+      if (restoredBounds) {
+        if (this._config.rememberPosition && this._config.rememberSize) {
+          this._window.setContentBounds(restoredBounds)
+        } else if (this._config.rememberPosition) {
+          this._window.setPosition(restoredBounds.x, restoredBounds.y)
+        } else if (this._config.rememberSize) {
+          this._window.setContentSize(restoredBounds.width, restoredBounds.height)
+          this._window.center()
+        }
       }
     }
 
@@ -495,7 +510,16 @@ export abstract class BaseAkariWindow<
         !this._window.isFullScreen()
       ) {
         const bounds = this._window.getContentBounds()
-        runInAction(() => (this.state.trackedBounds = bounds))
+
+        // 取整存储, 避免小数坐标在反复记忆与恢复间累积漂移
+        const trackedBounds: Electron.Rectangle = {
+          x: Math.round(bounds.x),
+          y: Math.round(bounds.y),
+          width: Math.round(bounds.width),
+          height: Math.round(bounds.height)
+        }
+
+        runInAction(() => (this.state.trackedBounds = trackedBounds))
       }
     }
 
