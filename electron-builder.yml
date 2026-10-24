@@ -20,6 +20,8 @@ files:
   - '!rabi-*'
   - '!feedback-platform{,/**}'
   - '!native{,/**}'
+  - '!dist{,/**}'
+  - '!dist-build{,/**}'
   - '!**/.venv/**'
   - '!node_modules/electron{,/**}'
   - '!node_modules/**/*.map'
