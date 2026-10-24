@@ -104,14 +104,6 @@ export class LeagueClientUxMain implements IAkariShardInitDispose {
   async update() {
     try {
       this.state.setLaunchedClients(await this._commandLineReader.read())
-
-      if (this._pollTimerId) {
-        clearInterval(this._pollTimerId)
-      }
-      this._pollTimerId = setInterval(
-        () => this.update(),
-        LeagueClientUxMain.CLIENT_CMD_DEFAULT_POLL_INTERVAL
-      )
     } catch (error) {
       this._ipc.sendEvent(LeagueClientUxMain.id, 'error-polling')
       this._logger.error(`Failed to get Ux command line`, error)

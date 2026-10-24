@@ -70,7 +70,11 @@ export class OngoingGameMain implements IAkariShardInitDispose {
       OngoingGameMain.id,
       {
         concurrency: { default: this.settings.concurrency, schema: z.number() },
-        enabled: { default: this.settings.enabled, schema: z.boolean() },
+        enabled: {
+          default: this.settings.enabled,
+          schema: z.boolean(),
+          restore: () => false
+        },
         matchHistoryLoadCount: {
           default: this.settings.matchHistoryLoadCount,
           schema: z.number(),

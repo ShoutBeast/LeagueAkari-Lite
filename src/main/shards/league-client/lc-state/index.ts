@@ -9,7 +9,6 @@ import { LcuEvent } from '@shared/types/league-client/event'
 import { Ballot } from '@shared/types/league-client/honorV2'
 import { isAxiosError } from 'axios'
 import { comparer, computed, makeAutoObservable, observable, runInAction } from 'mobx'
-import PQueue from 'p-queue'
 
 import type { LeagueClientMainContext } from '..'
 import { TaskRunner } from '../task-runner'
@@ -775,12 +774,9 @@ export class LeagueClientData {
       { equals: comparer.structural }
     )
 
-    const gridChampionsQueue = new PQueue({ concurrency: 6 })
-
     this._onLcuNotConnected(() => {
       this.champSelect.setSelfSummoner(null)
       isCellSummonerUpdated = false
-      gridChampionsQueue.clear()
     })
 
     const loadCurrentChampion = async () => {
@@ -849,26 +845,17 @@ export class LeagueClientData {
     }
 
     const fillGridChampions = async (champs: GridChamp[]) => {
+      // all-grid-champions 一次性返回的数据与逐个查询完全一致，直接使用即可
       for (const champ of champs) {
-        gridChampionsQueue.add(async () => {
-          try {
-            const { data } = await this._context.leagueClient.api.champSelect.getGridChamp(champ.id)
-            this.champSelect.setGridChampion(data)
-            this._context.mobxUtils.notifyStatePropChange(
-              this._context.namespace,
-              'champSelect',
-              `gridChampions[${champ.id}]`,
-              data,
-              { action: 'update', raw: true }
-            )
-          } catch (error) {
-            // just skip
-            this._context.logger.warn(`Failed to load grid champions: ${champ.id}`, error)
-          }
-        })
+        this.champSelect.setGridChampion(champ)
+        this._context.mobxUtils.notifyStatePropChange(
+          this._context.namespace,
+          'champSelect',
+          `gridChampions[${champ.id}]`,
+          champ,
+          { action: 'update', raw: true }
+        )
       }
-
-      await gridChampionsQueue.onIdle()
     }
 
     const loadAllGridChampionsAndFillGridChampions = async () => {
@@ -1135,21 +1122,6 @@ export class LeagueClientData {
       }
     }
 
-    const loadItems = async () => {
-      try {
-        const items = (await this._context.leagueClient.api.gameData.getItems()).data
-        this.gameData.setItems(
-          items.reduce((prev, cur) => {
-            prev[cur.id] = cur
-            return prev
-          }, {})
-        )
-      } catch (error) {
-        this._context.ipc.sendEvent(this._context.namespace, 'error-sync-data', 'get-items')
-        this._context.logger.warn(`Failed to get items`)
-      }
-    }
-
     const loadQueues = async () => {
       try {
         const queues = (await this._context.leagueClient.api.gameData.getQueues()).data
@@ -1173,52 +1145,6 @@ export class LeagueClientData {
       }
     }
 
-    const loadPerks = async () => {
-      try {
-        const perks = (await this._context.leagueClient.api.gameData.getPerks()).data
-        this.gameData.setPerks(
-          perks.reduce((prev, cur) => {
-            prev[cur.id] = cur
-            return prev
-          }, {})
-        )
-      } catch (error) {
-        this._context.ipc.sendEvent(this._context.namespace, 'error-sync-data', 'get-perks')
-        this._context.logger.warn(`Failed to get perks`, error)
-      }
-    }
-
-    const loadPerkstyles = async () => {
-      try {
-        const perkstyles = (await this._context.leagueClient.api.gameData.getPerkstyles()).data
-        this.gameData.setPerkStyles({
-          schemaVersion: perkstyles.schemaVersion,
-          styles: perkstyles.styles.reduce((prev, cur) => {
-            prev[cur.id] = cur
-            return prev
-          }, {})
-        })
-      } catch (error) {
-        this._context.ipc.sendEvent(this._context.namespace, 'error-sync-data', 'get-perkstyles')
-        this._context.logger.warn(`Failed to get perkstyles`, error)
-      }
-    }
-
-    const loadAugments = async () => {
-      try {
-        const augments = (await this._context.leagueClient.api.gameData.getAugments()).data
-        this.gameData.setAugments(
-          augments.reduce((prev, cur) => {
-            prev[cur.id] = cur
-            return prev
-          }, {})
-        )
-      } catch (error) {
-        this._context.ipc.sendEvent(this._context.namespace, 'error-sync-data', 'get-augments')
-        this._context.logger.warn(`Failed to get augments`, error)
-      }
-    }
-
     const loadChampions = async () => {
       try {
         const champions = (await this._context.leagueClient.api.gameData.getChampionSummary()).data
@@ -1234,66 +1160,11 @@ export class LeagueClientData {
       }
     }
 
-    const loadMaps = async () => {
-      try {
-        const maps = (await this._context.leagueClient.api.gameData.getMaps()).data
-        this.gameData.setMaps(
-          maps.reduce((prev, cur) => {
-            prev[cur.id] = cur
-            return prev
-          }, {})
-        )
-      } catch (error) {
-        this._context.ipc.sendEvent(this._context.namespace, 'error-sync-data', 'get-maps')
-        this._context.logger.warn(`Failed to get maps`, error)
-      }
-    }
-
-    const loadGameModeMutators = async () => {
-      try {
-        const gameModeMutators = (
-          await this._context.leagueClient.api.gameData.getGameModeMutators()
-        ).data
-        this.gameData.setGameModeMutators(
-          gameModeMutators.reduce((prev, cur) => {
-            prev[cur.MapId] = cur
-            return prev
-          }, {})
-        )
-      } catch (error) {
-        this._context.ipc.sendEvent(
-          this._context.namespace,
-          'error-sync-data',
-          'get-game-mode-mutators'
-        )
-        this._context.logger.warn(`Failed to get game mode mutators`, error)
-      }
-    }
-
-    const loadChallenges = async () => {
-      try {
-        const challenges = (await this._context.leagueClient.api.gameData.getChallenges()).data
-        this.gameData.setChallenges(challenges)
-      } catch (error) {
-        this._context.ipc.sendEvent(this._context.namespace, 'error-sync-data', 'get-challenges')
-        this._context.logger.warn(`Failed to get challenges`, error)
-      }
-    }
-
     this._stateInitializer.register('game-data-summoner-spells', loadSummonerSpells, {
       group: 'game-data'
     })
-    this._stateInitializer.register('game-data-items', loadItems, { group: 'game-data' })
     this._stateInitializer.register('game-data-queues', loadQueues, { group: 'game-data' })
-    this._stateInitializer.register('game-data-perks', loadPerks, { group: 'game-data' })
-    this._stateInitializer.register('game-data-perkstyles', loadPerkstyles, { group: 'game-data' })
-    this._stateInitializer.register('game-data-augments', loadAugments, { group: 'game-data' })
     this._stateInitializer.register('game-data-champions', loadChampions, { group: 'game-data' })
-    this._stateInitializer.register('game-data-game-mode-mutators', loadGameModeMutators, {
-      group: 'game-data'
-    })
-    this._stateInitializer.register('game-data-maps', loadMaps, { group: 'game-data' })
-    this._stateInitializer.register('game-data-challenges', loadChallenges, { group: 'game-data' })
 
     this._onLcuNotConnected(() => {
       // NO NEED TO CLEAR

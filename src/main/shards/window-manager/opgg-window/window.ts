@@ -33,7 +33,7 @@ export class AkariOpggWindow extends BaseAkariWindow<OpggWindowState, OpggWindow
       rememberSize: true,
       repositionWindowIfInvisible: true,
       settingSchema: {
-        enabled: { default: settings.enabled, schema: z.boolean() },
+        enabled: { default: settings.enabled, schema: z.boolean(), restore: () => false },
         autoShow: { default: settings.autoShow, schema: z.boolean() },
         showShortcut: { default: settings.showShortcut, schema: z.string().nullable() }
       },

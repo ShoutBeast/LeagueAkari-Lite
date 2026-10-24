@@ -2,7 +2,7 @@ import { Rectangle } from 'electron'
 import { makeAutoObservable, observable } from 'mobx'
 
 export class OpggWindowSettings {
-  enabled: boolean = true
+  enabled: boolean = false
   autoShow: boolean = true
   opacity: number = 1
   pinned: boolean = true

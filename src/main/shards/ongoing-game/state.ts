@@ -37,7 +37,10 @@ import {
 } from './computed-state'
 
 export class OngoingGameSettings implements OngoingGameSettingsData {
-  enabled: boolean = true
+  /**
+   * 以降低 CPU 占用为先, 默认不查询战绩 (对局分析管线是主要的 CPU 消耗来源)
+   */
+  enabled: boolean = false
   matchHistoryLoadCount: number = 50
 
   /**

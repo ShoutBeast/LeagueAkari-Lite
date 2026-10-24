@@ -43,6 +43,7 @@ export class RespawnTimerMain implements IAkariShardInitDispose {
         enabled: {
           default: false,
           schema: z.boolean(),
+          restore: () => false,
           sideEffect: ({ value }) => this._controller.applyEnabledSettingSideEffect(value)
         }
       },
