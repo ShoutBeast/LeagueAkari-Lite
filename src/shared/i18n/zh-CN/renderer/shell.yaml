@@ -180,6 +180,19 @@ startup:
     successMessage: 已启动进程：{{name}}
     failedMessage: 无法启动进程 {{name}}：{{reason}}
     newVersionAvailable: 新版本
+    custom:
+      title: 手动指定客户端
+      placeholder: 安装目录或 Client.exe 路径
+      pickDirectory: 选择目录
+      pickExecutable: 选择 Client.exe
+      apply: 应用
+      clear: 清除
+      applied: 已应用
+      invalid: 无法应用
+      error:
+        input-not-exists: 路径不存在
+        not-client-exe: 请指向 Client.exe
+        client-exe-not-found: 目录下未找到 Client.exe
 backgroundTasks:
   taskTitle: 正在进行 ({{count}})
   emptyPlaceholder: 无后台任务

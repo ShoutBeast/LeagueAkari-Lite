@@ -122,6 +122,55 @@
         </NIcon>
       </div>
     </NScrollbar>
+
+    <!-- custom installation location -->
+    <div class="mt-4 flex w-58 flex-col gap-1">
+      <div class="text-[11px] font-bold text-black/50 dark:text-white/50">
+        {{ t('startup.launcher.custom.title') }}
+      </div>
+
+      <NInput
+        v-model:value="customPathInput"
+        size="tiny"
+        clearable
+        :placeholder="t('startup.launcher.custom.placeholder')"
+        @keyup.enter="applyCustomPath"
+      />
+
+      <div class="flex gap-1">
+        <NButton size="tiny" @click="pickCustomPath('directory')">
+          {{ t('startup.launcher.custom.pickDirectory') }}
+        </NButton>
+        <NButton size="tiny" @click="pickCustomPath('executable')">
+          {{ t('startup.launcher.custom.pickExecutable') }}
+        </NButton>
+        <NButton size="tiny" type="primary" secondary @click="applyCustomPath">
+          {{ t('startup.launcher.custom.apply') }}
+        </NButton>
+        <NButton
+          v-if="cis.settings.customTencentInstallationPath"
+          size="tiny"
+          quaternary
+          @click="clearCustomPath"
+        >
+          {{ t('startup.launcher.custom.clear') }}
+        </NButton>
+      </div>
+
+      <div
+        v-if="cis.customInstallationStatus === 'applied' && cis.tclsExecutablePath"
+        class="min-w-0 text-[11px] text-green-600 dark:text-green-400"
+      >
+        {{ t('startup.launcher.custom.applied') }}
+        <span class="font-mono break-all">{{ cis.tclsExecutablePath }}</span>
+      </div>
+      <div
+        v-else-if="cis.customInstallationStatus === 'error'"
+        class="text-[11px] text-red-600 dark:text-red-400"
+      >
+        {{ customPathErrorText }}
+      </div>
+    </div>
   </div>
 </template>
 
@@ -146,8 +195,8 @@ import { UxCommandLine } from '@shared/shards/league-client-ux'
 import { getSgpServerId } from '@shared/utils/sgp'
 import { ChevronRight20Filled, PlugConnected24Filled } from '@vicons/fluent'
 import { useTranslation } from 'i18next-vue'
-import { NEllipsis, NIcon, NScrollbar, NSpin, useMessage } from 'naive-ui'
-import { computed } from 'vue'
+import { NEllipsis, NButton, NIcon, NInput, NScrollbar, NSpin, useMessage } from 'naive-ui'
+import { computed, ref, watch } from 'vue'
 
 import { useLeagueClientPeekStore } from '@main-window/shards/league-client-peek/store'
 import { PlayerTabsRenderer } from '@main-window/shards/player-tabs'
@@ -267,6 +316,46 @@ const handleConnect = (cmd: UxCommandLine) => {
   }
 
   lc.connect(cmd)
+}
+
+const customPathInput = ref(cis.settings.customTencentInstallationPath)
+
+watch(
+  () => cis.settings.customTencentInstallationPath,
+  (value) => {
+    customPathInput.value = value
+  }
+)
+
+const customPathErrorText = computed(() => {
+  const reason = cis.customInstallationMessage
+  if (
+    reason === 'input-not-exists' ||
+    reason === 'not-client-exe' ||
+    reason === 'client-exe-not-found'
+  ) {
+    return t(`startup.launcher.custom.error.${reason}`)
+  }
+
+  return `${t('startup.launcher.custom.invalid')} (${reason ?? ''})`
+})
+
+const pickCustomPath = async (mode: 'directory' | 'executable') => {
+  const picked = await ci.pickCustomInstallationPath(mode)
+
+  if (picked) {
+    customPathInput.value = picked
+    await applyCustomPath()
+  }
+}
+
+const applyCustomPath = async () => {
+  await ci.setCustomTencentInstallationPath(customPathInput.value.trim())
+}
+
+const clearCustomPath = () => {
+  customPathInput.value = ''
+  ci.setCustomTencentInstallationPath('')
 }
 </script>
 

@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
-import { ref, shallowRef } from 'vue'
+import { reactive, ref, shallowRef } from 'vue'
+
+export type ClientInstallationCustomStatus = 'unset' | 'applied' | 'error'
 
 export const useClientInstallationStore = defineStore('shard:client-installation-renderer', () => {
   const leagueClientExecutablePaths = shallowRef<string[]>([])
@@ -11,6 +13,13 @@ export const useClientInstallationStore = defineStore('shard:client-installation
   const tclsExecutablePath = ref<string | null>(null)
   const weGameLauncherExecutablePath = ref<string | null>(null)
 
+  const customInstallationStatus = ref<ClientInstallationCustomStatus>('unset')
+  const customInstallationMessage = ref<string | null>(null)
+
+  const settings = reactive({
+    customTencentInstallationPath: ''
+  })
+
   return {
     leagueClientExecutablePaths,
     tencentInstallationPath,
@@ -18,6 +27,9 @@ export const useClientInstallationStore = defineStore('shard:client-installation
     officialRiotClientExecutablePath,
     tclsExecutablePath,
     weGameLauncherExecutablePath,
-    detectedLiveStreamingClients
+    detectedLiveStreamingClients,
+    customInstallationStatus,
+    customInstallationMessage,
+    settings
   }
 })

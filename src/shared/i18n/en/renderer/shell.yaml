@@ -180,6 +180,19 @@ startup:
     successMessage: 'Successfully launched: {{name}}'
     failedMessage: 'Failed to launch {{name}}: {{reason}}'
     newVersionAvailable: New
+    custom:
+      title: Locate Client Manually
+      placeholder: Installation directory or Client.exe path
+      pickDirectory: Pick Directory
+      pickExecutable: Pick Client.exe
+      apply: Apply
+      clear: Clear
+      applied: Applied
+      invalid: Cannot apply
+      error:
+        input-not-exists: Path does not exist
+        not-client-exe: Please point to Client.exe
+        client-exe-not-found: Client.exe not found under the directory
 backgroundTasks:
   taskTitle: Ongoing Tasks ({{count}})
   emptyPlaceholder: No background tasks

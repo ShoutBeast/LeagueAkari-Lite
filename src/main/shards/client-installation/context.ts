@@ -4,7 +4,7 @@ import type { AppCommonMain } from '../app-common'
 import type { AkariIpcMain } from '../ipc'
 import type { AkariLogger } from '../logger-factory'
 import type { MobxUtilsMain } from '../mobx-utils'
-import type { ClientInstallationState } from './state'
+import type { ClientInstallationSettings, ClientInstallationState } from './state'
 
 export const CLIENT_INSTALLATION_MAIN_NAMESPACE = 'client-installation-main'
 
@@ -31,6 +31,7 @@ export const LIVE_STREAMING_CLIENT_POLL_INTERVAL = 20 * 60 * 1000
 export interface ClientInstallationMainContext {
   namespace: string
   state: ClientInstallationState
+  settings: ClientInstallationSettings
   logger: AkariLogger
   appCommon: AppCommonMain
   ipc: AkariIpcMain

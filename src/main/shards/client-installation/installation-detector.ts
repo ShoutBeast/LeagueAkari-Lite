@@ -12,9 +12,19 @@ import {
   TENCENT_REG_INSTALL_VALUE,
   WEGAME_DEFAULTICON_PATH
 } from './context'
+import {
+  type InstallationFsLike,
+  resolveCustomTencentInstallation
+} from './custom-installation-resolver'
 import { shouldScanMacInstallations, shouldScanTencentInstallations } from './platform'
 
 const execAsync = util.promisify(cp.exec)
+
+const nodeFsLike: InstallationFsLike = {
+  access: (p) => fs.promises.access(p),
+  readdir: (p, options) => fs.promises.readdir(p, options),
+  stat: (p) => fs.promises.stat(p)
+}
 
 // regedit only works on Windows (depends on cscript/VBS). Avoid loading it on macOS/Linux.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -40,9 +50,68 @@ export class ClientInstallationDetector {
       return
     }
 
+    // 用户手动指定了安装位置时优先使用, 不再进行注册表与扫盘检测
+    if (await this.applyCustomTencentInstallation()) {
+      void this.updateLeagueClientInstallationByFile()
+      return
+    }
+
     void this.updateTencentPathsByReg()
     void this.updateTencentPathsByFile()
     void this.updateLeagueClientInstallationByFile()
+  }
+
+  /**
+   * 应用用户手动指定的安装目录或 Client.exe 路径, 返回是否成功应用
+   */
+  async applyCustomTencentInstallation() {
+    const { state, settings, logger } = this._context
+    const input = settings.customTencentInstallationPath.trim()
+
+    if (!input) {
+      state.setCustomInstallationStatus('unset')
+      state.setCustomInstallationMessage(null)
+      return false
+    }
+
+    const result = await resolveCustomTencentInstallation(input, nodeFsLike)
+
+    if (!result.ok) {
+      logger.warn('Failed to apply custom Tencent installation path', {
+        input,
+        reason: result.reason
+      })
+      state.setCustomInstallationStatus('error')
+      state.setCustomInstallationMessage(result.reason)
+      return false
+    }
+
+    logger.info('Custom Tencent installation path applied', {
+      input,
+      installationPath: result.installationPath,
+      tclsExecutablePath: result.tclsExecutablePath
+    })
+
+    state.setTencentInstallationPath(result.installationPath)
+    state.setTclsExecutablePath(result.tclsExecutablePath)
+    state.setWeGameLauncherExecutablePath(result.weGameLauncherExecutablePath)
+    state.setCustomInstallationStatus('applied')
+    state.setCustomInstallationMessage(null)
+    return true
+  }
+
+  /**
+   * 清除手动指定产生的状态, 并重新进行自动检测
+   */
+  async redetectTencentPaths() {
+    const { state } = this._context
+
+    state.setTencentInstallationPath(null)
+    state.setTclsExecutablePath(null)
+    state.setWeGameLauncherExecutablePath(null)
+
+    await this.updateTencentPathsByReg()
+    await this.updateTencentPathsByFile()
   }
 
   /**

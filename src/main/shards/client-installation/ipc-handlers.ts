@@ -1,5 +1,9 @@
+import { dialog } from 'electron'
+
 import type { ClientInstallationLauncher } from './client-launcher'
 import type { ClientInstallationMainContext } from './context'
+
+export type CustomInstallationPickerMode = 'directory' | 'executable'
 
 export class ClientInstallationIpcHandlers {
   constructor(
@@ -23,5 +27,22 @@ export class ClientInstallationIpcHandlers {
     this._context.ipc.onCall(this._context.namespace, 'launchWeGameLeagueOfLegends', async () => {
       await this._launcher.launchWeGameLeagueOfLegends()
     })
+
+    this._context.ipc.onCall(
+      this._context.namespace,
+      'pickCustomInstallationPath',
+      async (_, mode: CustomInstallationPickerMode) => {
+        const result = await dialog.showOpenDialog({
+          properties: mode === 'directory' ? ['openDirectory'] : ['openFile'],
+          filters: mode === 'executable' ? [{ name: 'Client.exe', extensions: ['exe'] }] : undefined
+        })
+
+        if (result.canceled || result.filePaths.length === 0) {
+          return null
+        }
+
+        return result.filePaths[0]
+      }
+    )
   }
 }
