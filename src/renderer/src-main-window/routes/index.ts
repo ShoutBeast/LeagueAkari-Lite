@@ -2,6 +2,8 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 
 import Automation from '@main-window/views/automation/Automation.vue'
 import OngoingGame from '@main-window/views/ongoing-game/OngoingGame.vue'
+// 本地扩展页面, 同步上游时只需保留这一处挂载
+import OtherFeatures from '@main-window/views/other-features/OtherFeatures.vue'
 import PlayerTabs from '@main-window/views/player-tabs/PlayerTabs.vue'
 import Test from '@main-window/views/test/Test.vue'
 import Toolkit from '@main-window/views/toolkit/Toolkit.vue'
@@ -34,6 +36,11 @@ const router = createRouter({
       name: 'automation',
       path: '/automation/:section?',
       component: Automation
+    },
+    {
+      name: 'other-features',
+      path: '/other-features/:section?',
+      component: OtherFeatures
     },
     {
       name: 'test',

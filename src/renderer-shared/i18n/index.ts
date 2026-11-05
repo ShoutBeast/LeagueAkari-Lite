@@ -8,6 +8,8 @@ import matchCardEn from '@shared/i18n/en/renderer/match-card.yaml'
 import notificationsEn from '@shared/i18n/en/renderer/notifications.yaml'
 import ongoingGameEn from '@shared/i18n/en/renderer/ongoing-game.yaml'
 import opggEn from '@shared/i18n/en/renderer/opgg.yaml'
+// 本地扩展功能文案
+import otherFeaturesEn from '@shared/i18n/en/renderer/other-features.yaml'
 import playerEn from '@shared/i18n/en/renderer/player.yaml'
 import rankedEn from '@shared/i18n/en/renderer/ranked.yaml'
 import settingsEn from '@shared/i18n/en/renderer/settings.yaml'
@@ -23,6 +25,8 @@ import matchCardZhCN from '@shared/i18n/zh-CN/renderer/match-card.yaml'
 import notificationsZhCN from '@shared/i18n/zh-CN/renderer/notifications.yaml'
 import ongoingGameZhCN from '@shared/i18n/zh-CN/renderer/ongoing-game.yaml'
 import opggZhCN from '@shared/i18n/zh-CN/renderer/opgg.yaml'
+// 本地扩展功能文案
+import otherFeaturesZhCN from '@shared/i18n/zh-CN/renderer/other-features.yaml'
 import playerZhCN from '@shared/i18n/zh-CN/renderer/player.yaml'
 import rankedZhCN from '@shared/i18n/zh-CN/renderer/ranked.yaml'
 import settingsZhCN from '@shared/i18n/zh-CN/renderer/settings.yaml'
@@ -60,7 +64,8 @@ const rendererEn = mergeRendererResources(
   auxWindowEn,
   opggEn,
   cdTimerEn,
-  notificationsEn
+  notificationsEn,
+  otherFeaturesEn
 )
 
 const rendererZhCN = mergeRendererResources(
@@ -77,7 +82,8 @@ const rendererZhCN = mergeRendererResources(
   auxWindowZhCN,
   opggZhCN,
   cdTimerZhCN,
-  notificationsZhCN
+  notificationsZhCN,
+  otherFeaturesZhCN
 )
 
 i18next.init({

@@ -55,7 +55,7 @@ import { useLeagueClientStore } from '@renderer-shared/shards/league-client/stor
 import { useOngoingGameStore } from '@renderer-shared/shards/ongoing-game/store'
 import { WindowManagerRenderer } from '@renderer-shared/shards/window-manager'
 import { ToolFilled as ToolFilledIcon } from '@vicons/antd'
-import { AiStatus as AiStatusIcon } from '@vicons/carbon'
+import { AiStatus as AiStatusIcon, Tools as ToolsIcon } from '@vicons/carbon'
 import {
   AnimalRabbit28Filled as AnimalRabbit28FilledIcon,
   Games24Filled as Games24FilledIcon
@@ -192,6 +192,12 @@ const menu = computed(() => {
       key: 'toolkit',
       icon: renderIcon(ToolFilledIcon),
       name: t('navigation.sidebar.menu.toolkit')
+    },
+    // 本地扩展入口, 文案走独立的 otherFeatures 命名空间
+    {
+      key: 'other-features',
+      icon: renderIcon(ToolsIcon),
+      name: t('otherFeatures.menu')
     },
     {
       key: 'test',

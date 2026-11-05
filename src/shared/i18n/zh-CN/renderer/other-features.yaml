@@ -1,0 +1,66 @@
+# 本地扩展功能的文案, 与上游 i18n 文件隔离, 便于同步上游变更
+otherFeatures:
+  menu: 其他功能
+  title: 其他功能
+  manualClient:
+    tab: 客户端路径
+    section: 手动指定客户端
+    path:
+      label: 客户端安装位置
+      description: 腾讯服安装目录, 或 TCLS 目录下的 Client.exe。留空时使用自动检测结果。
+      placeholder: 安装目录或 Client.exe 路径
+    pickDirectory: 选择目录
+    pickExecutable: 选择 Client.exe
+    apply: 应用
+    clear: 清除
+    applied: 已应用
+    invalid: 无法应用
+    error:
+      input-not-exists: 路径不存在
+      not-client-exe: 请指向 Client.exe
+      client-exe-not-found: 目录下未找到 Client.exe
+  aceGuard:
+    tab: ACE 限制
+    section: ACE 资源限制
+    unavailable: 当前平台不支持，或原生插件未加载。
+    requireElevation: 需要以管理员身份启动 League Akari 才能应用限制。当前仅显示检测结果。
+    enabled:
+      label: 启用限制
+      description: 开启后每秒检查一次目标进程，并对新出现的进程应用限制。
+    profile:
+      label: 限制档位
+      description: 档位越高限制项越多。激进档会把 CPU 上限压到 3%，可能影响客户端心跳。
+      options:
+        conservative: 保守
+        standard: 标准
+        aggressive: 激进
+    writeIfeo:
+      label: 预设启动优先级
+      description: 写入 IFEO 注册表，让之后启动的目标进程直接以低优先级运行，需要管理员权限。
+    targets:
+      label: 目标进程
+      description: 只调整这些进程的资源分配，不会终止、挂起或注入它们。
+    cpuSets:
+      label: CPU 拓扑
+      hybrid: 混合架构，能效核 {{efficiency}} 个，性能核 {{performance}} 个
+      flat: 非混合架构，跳过 CPU 亲和限制
+    reports: 进程与限制状态
+    empty: 未发现目标进程。启动游戏客户端后会自动检测。
+    scanNow: 立即扫描
+    lastScan: 最近扫描 {{time}}
+    state:
+      applied: 已限制
+      denied: 被拒绝
+      reverted: 被改回
+      pending: 待确认
+      skipped: 未启用
+      blocked: 已被占用
+    limits:
+      priority: 优先级
+      cpuSets: CPU 亲和
+      ecoQos: 效率模式
+      memoryPriority: 内存优先级
+      ioPriority: I/O 优先级
+      pagePriority: 页优先级
+      job: CPU 上限
+    risk: 调整反作弊进程的资源分配可能违反游戏用户协议，存在账号风险。若出现登录失败或无法进入对局，请立即关闭本功能并恢复默认。

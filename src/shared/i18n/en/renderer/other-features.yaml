@@ -1,0 +1,66 @@
+# Copy for locally added features, kept apart from upstream i18n files
+otherFeatures:
+  menu: Other Features
+  title: Other Features
+  manualClient:
+    tab: Client Path
+    section: Locate Client Manually
+    path:
+      label: Client installation location
+      description: Tencent installation directory, or Client.exe under TCLS. Leave empty to use auto detection.
+      placeholder: Installation directory or Client.exe path
+    pickDirectory: Pick Directory
+    pickExecutable: Pick Client.exe
+    apply: Apply
+    clear: Clear
+    applied: Applied
+    invalid: Cannot apply
+    error:
+      input-not-exists: Path does not exist
+      not-client-exe: Please point to Client.exe
+      client-exe-not-found: Client.exe not found under the directory
+  aceGuard:
+    tab: ACE Limits
+    section: ACE Resource Limits
+    unavailable: Unsupported platform, or the native addon is not loaded.
+    requireElevation: League Akari must run as administrator to apply limits. Detection only for now.
+    enabled:
+      label: Enable limits
+      description: Scans target processes once per second and applies limits to new ones.
+    profile:
+      label: Profile
+      description: Higher profiles apply more limits. The aggressive profile caps CPU at 3% and may affect client heartbeats.
+      options:
+        conservative: Conservative
+        standard: Standard
+        aggressive: Aggressive
+    writeIfeo:
+      label: Preset launch priority
+      description: Writes IFEO registry values so future target processes start at low priority. Requires administrator.
+    targets:
+      label: Target processes
+      description: Only resource allocation is adjusted. These processes are never terminated, suspended or injected.
+    cpuSets:
+      label: CPU topology
+      hybrid: Hybrid architecture, {{efficiency}} efficiency cores and {{performance}} performance cores
+      flat: Non-hybrid architecture, CPU affinity limit skipped
+    reports: Processes and limit status
+    empty: No target processes found. Detection starts automatically after the game client launches.
+    scanNow: Scan now
+    lastScan: Last scan {{time}}
+    state:
+      applied: Applied
+      denied: Denied
+      reverted: Reverted
+      pending: Pending
+      skipped: Skipped
+      blocked: Occupied
+    limits:
+      priority: Priority
+      cpuSets: CPU affinity
+      ecoQos: EcoQoS
+      memoryPriority: Memory priority
+      ioPriority: I/O priority
+      pagePriority: Page priority
+      job: CPU cap
+    risk: Adjusting anti-cheat process resource allocation may violate the game EULA and carries account risk. Disable this feature immediately if login fails or matches cannot be entered.
