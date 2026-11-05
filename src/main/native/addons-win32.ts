@@ -4,6 +4,7 @@ export interface Win32AddonsInitializationResult {
   addons: Win32Addons
   isElevated: boolean
   inputInitializationError?: unknown
+  processControlInitializationError?: unknown
 }
 
 type RegisterExitListener = (listener: () => void) => void
@@ -22,9 +23,17 @@ export function initializeWin32Addons(
 ): Win32AddonsInitializationResult {
   addons.tools.load()
 
+  // 进程控制插件缺失时不应影响其余原生能力
+  let processControlInitializationError: unknown
+  try {
+    addons.processControl.load()
+  } catch (error) {
+    processControlInitializationError = error
+  }
+
   const isElevated = addons.tools.isElevated()
   if (!isElevated) {
-    return { addons, isElevated }
+    return { addons, isElevated, processControlInitializationError }
   }
 
   try {
@@ -37,8 +46,8 @@ export function initializeWin32Addons(
       }
     })
 
-    return { addons, isElevated }
+    return { addons, isElevated, processControlInitializationError }
   } catch (inputInitializationError) {
-    return { addons, isElevated, inputInitializationError }
+    return { addons, isElevated, inputInitializationError, processControlInitializationError }
   }
 }

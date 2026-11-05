@@ -31,6 +31,22 @@
             ],
             "dependencies": ["<!(node -p \"require('node-addon-api').gyp\")"],
             "libraries": ["-lntdll"],
+        },
+        {
+            "target_name": "akari-process-win64",
+            "sources": [
+                "./src/process/process.cc"
+            ],
+            "cflags!": ["-fno-exceptions"],
+            "cflags_cc!": ["-fno-exceptions"],
+            "cxxflags": ["-std=c++17"],
+            "defines": ["NAPI_DISABLE_CPP_EXCEPTIONS"],
+            "include_dirs": [
+                "<!@(node -p \"require('node-addon-api').include\")",
+                "./src"
+            ],
+            "dependencies": ["<!(node -p \"require('node-addon-api').gyp\")"],
+            "libraries": ["-lntdll", "-ladvapi32"],
         }
     ]
 }

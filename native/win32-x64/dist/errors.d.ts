@@ -1,4 +1,4 @@
-export type NativeAddonFeature = 'input' | 'tools';
+export type NativeAddonFeature = 'input' | 'tools' | 'process';
 export declare class AddonLoadError extends Error {
     readonly feature: NativeAddonFeature;
     readonly cause: unknown;

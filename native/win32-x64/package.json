@@ -30,6 +30,11 @@
       "types": "./dist/tools/index.d.ts",
       "require": "./dist/tools/index.js",
       "default": "./dist/tools/index.js"
+    },
+    "./process": {
+      "types": "./dist/process/index.d.ts",
+      "require": "./dist/process/index.js",
+      "default": "./dist/process/index.js"
     }
   },
   "scripts": {

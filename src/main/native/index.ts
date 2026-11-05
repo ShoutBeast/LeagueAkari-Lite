@@ -198,3 +198,22 @@ export function getLeagueClientWindowPlacement() {
     throw new NotSupportedPlatformError('getLeagueClientWindowPlacement', process.platform)
   }
 }
+
+/**
+ * 进程调度控制插件。仅 Windows 且插件加载成功时可用。
+ */
+export function isProcessControlAvailable() {
+  if (process.platform !== 'win32' || !win32Addons) {
+    return false
+  }
+
+  return Boolean(win32Addons.processControl?.isLoaded())
+}
+
+export function getProcessControl() {
+  if (process.platform !== 'win32') {
+    throw new NotSupportedPlatformError('processControl', process.platform)
+  }
+
+  return getWin32Addons().processControl
+}

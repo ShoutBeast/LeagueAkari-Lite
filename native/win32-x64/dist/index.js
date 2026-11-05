@@ -39,7 +39,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.tools = exports.input = void 0;
+exports.tools = exports.processControl = exports.input = void 0;
+const process_1 = __importDefault(require("./process"));
+exports.processControl = process_1.default;
 const tools_1 = __importDefault(require("./tools"));
 exports.tools = tools_1.default;
 exports.input = __importStar(require("./input"));
