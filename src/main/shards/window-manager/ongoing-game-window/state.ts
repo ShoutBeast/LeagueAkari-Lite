@@ -1,5 +1,6 @@
-import { Rectangle } from 'electron'
 import { makeAutoObservable, observable } from 'mobx'
+
+import type { TrackedWindowBounds } from '../window-position-service'
 
 export class OngoingGameWindowSettings {
   enabled: boolean = false
@@ -40,7 +41,7 @@ export class OngoingGameWindowState {
 
   show: boolean = true
 
-  trackedBounds: Rectangle | null
+  trackedBounds: TrackedWindowBounds | null
 
   /**
    * 用于指示渲染层面的显示状态，不会影响窗口的实际显示状态
@@ -59,7 +60,7 @@ export class OngoingGameWindowState {
     this.show = show
   }
 
-  setTrackedBounds(bounds: Rectangle | null) {
+  setTrackedBounds(bounds: TrackedWindowBounds | null) {
     this.trackedBounds = bounds
   }
 

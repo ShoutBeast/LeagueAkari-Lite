@@ -1,6 +1,7 @@
 import { MainWindowCloseAction } from '@shared/shards/window-manager'
-import { Rectangle } from 'electron'
 import { makeAutoObservable, observable } from 'mobx'
+
+import type { TrackedWindowBounds } from '../window-position-service'
 
 /**
  * 分离设置项到独立的类
@@ -41,7 +42,7 @@ export class MainWindowState {
 
   show: boolean = true
 
-  trackedBounds: Rectangle | null
+  trackedBounds: TrackedWindowBounds | null
 
   setStatus(status: 'normal' | 'maximized' | 'minimized') {
     this.status = status
@@ -59,7 +60,7 @@ export class MainWindowState {
     this.show = show
   }
 
-  setTrackedBounds(bounds: Rectangle | null) {
+  setTrackedBounds(bounds: TrackedWindowBounds | null) {
     this.trackedBounds = bounds
   }
 

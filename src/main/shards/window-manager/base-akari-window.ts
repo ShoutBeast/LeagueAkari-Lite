@@ -9,6 +9,7 @@ import {
   IgnoreMouseEventsOptions,
   app,
   dialog,
+  screen,
   shell
 } from 'electron'
 import { comparer, runInAction } from 'mobx'
@@ -29,11 +30,15 @@ import { SettingSchema } from '../setting-factory'
 import { SetterSettingService } from '../setting-factory/setter-setting-service'
 import type { WindowManagerMainContext } from './context'
 import {
+  TRACKED_BOUNDS_SETTLE_MS,
+  createTrackedBounds,
   getMaxDisplayDimension,
   repositionWindowIfInvisible,
   rescueWindowIfUnreachable,
+  resolveTrackedBounds,
   sanitizeRestoredContentBounds
 } from './window-position-service'
+import type { TrackedWindowBounds } from './window-position-service'
 
 /**
  * 具备的一些基础属性
@@ -47,7 +52,7 @@ export interface BaseAkariWindowBasicState {
 
   show: boolean
 
-  trackedBounds: Electron.Rectangle | null
+  trackedBounds: TrackedWindowBounds | null
 }
 
 export interface AkariBaseWindowConfig<TSettings extends BaseAkariWindowBasicSetting> {
@@ -109,6 +114,12 @@ export abstract class BaseAkariWindow<
 
   protected _forceReadyTimerId: NodeJS.Timeout | null = null
   protected _trueClose = false
+
+  /** 窗口停稳后延迟记录尺寸的定时器 */
+  protected _boundsSettleTimerId: NodeJS.Timeout | null = null
+
+  /** 创建时希望恢复的内容区域, 用于窗口真正显示后校正 Chromium 应用失真的尺寸 */
+  protected _pendingRestoreBounds: Electron.Rectangle | null = null
 
   protected readonly _settingService: SetterSettingService<TSettings>
 
@@ -331,6 +342,8 @@ export abstract class BaseAkariWindow<
       }
       runInAction(() => (this.state.ready = true))
 
+      this._applyPendingRestoreBounds()
+
       if (this._window && this._config.repositionWindowIfInvisible) {
         // 仅抢救完全无法触及的窗口, 不干扰用户调整过的窗口位置与大小
         rescueWindowIfUnreachable(this._window)
@@ -368,24 +381,40 @@ export abstract class BaseAkariWindow<
 
     runInAction(() => (this.state.focus = this._window!.isFocused() ? 'focused' : 'blurred'))
 
-    if (this.state.trackedBounds) {
-      const restoredBounds = sanitizeRestoredContentBounds(
-        this.state.trackedBounds,
-        this._config.minWidth,
-        this._config.minHeight,
-        getMaxDisplayDimension()
-      )
+    const restoreTarget = this.state.trackedBounds
+    const targetDisplay = restoreTarget
+      ? screen.getDisplayMatching(restoreTarget)
+      : screen.getPrimaryDisplay()
 
-      if (restoredBounds) {
-        if (this._config.rememberPosition && this._config.rememberSize) {
-          this._window.setContentBounds(restoredBounds)
-        } else if (this._config.rememberPosition) {
-          this._window.setPosition(restoredBounds.x, restoredBounds.y)
-        } else if (this._config.rememberSize) {
-          this._window.setContentSize(restoredBounds.width, restoredBounds.height)
-          this._window.center()
-        }
+    const restoredBounds = sanitizeRestoredContentBounds(
+      restoreTarget,
+      this._config.minWidth,
+      this._config.minHeight,
+      getMaxDisplayDimension(),
+      { workArea: targetDisplay.workArea }
+    )
+
+    if (restoredBounds) {
+      if (this._config.rememberPosition && this._config.rememberSize) {
+        this._window.setContentBounds(restoredBounds)
+        this._pendingRestoreBounds = restoredBounds
+      } else if (this._config.rememberPosition) {
+        this._window.setPosition(restoredBounds.x, restoredBounds.y)
+      } else if (this._config.rememberSize) {
+        this._window.setContentSize(restoredBounds.width, restoredBounds.height)
+        this._window.center()
       }
+    } else {
+      // 没有可用记忆值时, 仍要用 DIP 显式设置一次默认尺寸。
+      // BrowserWindow 的构造参数在非 100% 缩放的显示器上会被当成物理像素放大,
+      // 只有 setContentBounds 能保证按 DIP 生效。
+      const current = this._window.getContentBounds()
+      this._window.setContentBounds({
+        x: current.x,
+        y: current.y,
+        width: this._config.baseWidth,
+        height: this._config.baseHeight
+      })
     }
 
     this._window.webContents.on('dom-ready', () => {
@@ -495,40 +524,58 @@ export abstract class BaseAkariWindow<
 
     this._window.on('closed', () => {
       this._logger.info(`BrowserWindow closed (${this._namespace})`)
+
+      if (this._boundsSettleTimerId) {
+        clearTimeout(this._boundsSettleTimerId)
+        this._boundsSettleTimerId = null
+      }
+
+      this._pendingRestoreBounds = null
+
       runInAction(() => (this.state.ready = false))
       this._window = null
     })
 
-    const saveBounds = () => {
-      if (!this._window) {
+    const captureBounds = () => {
+      const win = this._window
+      if (!win || win.isDestroyed()) {
         return
       }
 
-      if (
-        !this._window.isMinimized() &&
-        !this._window.isMaximized() &&
-        !this._window.isFullScreen()
-      ) {
-        const bounds = this._window.getContentBounds()
-
-        // 取整存储, 避免小数坐标在反复记忆与恢复间累积漂移
-        const trackedBounds: Electron.Rectangle = {
-          x: Math.round(bounds.x),
-          y: Math.round(bounds.y),
-          width: Math.round(bounds.width),
-          height: Math.round(bounds.height)
-        }
-
-        runInAction(() => (this.state.trackedBounds = trackedBounds))
+      if (win.isMinimized() || win.isMaximized() || win.isFullScreen()) {
+        return
       }
+
+      // 取整存储, 避免小数坐标在反复记忆与恢复间累积漂移
+      const contentBounds = win.getContentBounds()
+      const measured = createTrackedBounds(contentBounds, screen.getDisplayMatching(contentBounds))
+
+      // 跨 DPI 显示器时 Chromium 会按缩放系数放大或缩小报告尺寸,
+      // 由 resolveTrackedBounds 识别这类误报并沿用上一次的尺寸。
+      const trackedBounds = resolveTrackedBounds(measured, this.state.trackedBounds)
+
+      runInAction(() => (this.state.trackedBounds = trackedBounds))
+    }
+
+    // 窗口停稳之后才记录。跨 DPI 显示器切换抛出的中间尺寸只持续几毫秒,
+    // 立即记录会把被缩放系数放大过的值写进存档。
+    const scheduleBoundsCapture = () => {
+      if (this._boundsSettleTimerId) {
+        clearTimeout(this._boundsSettleTimerId)
+      }
+
+      this._boundsSettleTimerId = setTimeout(() => {
+        this._boundsSettleTimerId = null
+        captureBounds()
+      }, TRACKED_BOUNDS_SETTLE_MS)
     }
 
     this._window.on('move', () => {
-      saveBounds()
+      scheduleBoundsCapture()
     })
 
     this._window.on('resize', () => {
-      saveBounds()
+      scheduleBoundsCapture()
     })
 
     this._window.on('page-title-updated', (e) => e.preventDefault())
@@ -617,6 +664,34 @@ export abstract class BaseAkariWindow<
     })
 
     this._logger.info(`Create ${this._namespace}`)
+  }
+
+  /**
+   * Chromium 在跨 DPI 显示器上未必会精确应用 setContentBounds 的目标值,
+   * 窗口真正显示出来后校验一次, 尺寸明显偏移时纠正回去。
+   */
+  protected _applyPendingRestoreBounds() {
+    const target = this._pendingRestoreBounds
+    this._pendingRestoreBounds = null
+
+    const win = this._window
+    if (!target || !win || win.isDestroyed() || win.isMinimized() || win.isMaximized()) {
+      return
+    }
+
+    const current = win.getContentBounds()
+    if (
+      Math.abs(current.width - target.width) <= 2 &&
+      Math.abs(current.height - target.height) <= 2
+    ) {
+      return
+    }
+
+    this._logger.warn(`Content bounds drifted from restore target, reapplying`, {
+      target,
+      current
+    })
+    win.setContentBounds(target)
   }
 
   setOpacity(opacity: number) {
@@ -780,6 +855,11 @@ export abstract class BaseAkariWindow<
     if (this._forceReadyTimerId) {
       clearTimeout(this._forceReadyTimerId)
       this._forceReadyTimerId = null
+    }
+
+    if (this._boundsSettleTimerId) {
+      clearTimeout(this._boundsSettleTimerId)
+      this._boundsSettleTimerId = null
     }
   }
 

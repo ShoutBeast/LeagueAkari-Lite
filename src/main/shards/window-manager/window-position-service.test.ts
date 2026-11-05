@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { intersectsAnyDisplay, sanitizeRestoredContentBounds } from './window-position-service'
+import {
+  createTrackedBounds,
+  intersectsAnyDisplay,
+  resolveTrackedBounds,
+  sanitizeRestoredContentBounds
+} from './window-position-service'
 
 vi.mock('electron', () => ({}))
 vi.mock('@main/native', () => ({
@@ -47,6 +52,90 @@ describe('sanitizeRestoredContentBounds', () => {
     expect(
       sanitizeRestoredContentBounds({ x: 0, y: 0, width: 3840 * 3, height: 500 }, 340, 420, 3840)
     ).toEqual({ x: 0, y: 0, width: 3840 * 3, height: 500 })
+  })
+
+  it('超出目标显示器工作区的尺寸被裁剪, 但不会低于最小尺寸', () => {
+    const workArea = { x: 0, y: 0, width: 1920, height: 1040 }
+
+    expect(
+      sanitizeRestoredContentBounds({ x: 10, y: 10, width: 3000, height: 2000 }, 340, 420, 4000, {
+        workArea
+      })
+    ).toEqual({ x: 10, y: 10, width: 1920, height: 1040 })
+
+    expect(
+      sanitizeRestoredContentBounds({ x: 10, y: 10, width: 200, height: 200 }, 340, 420, 4000, {
+        workArea: { x: 0, y: 0, width: 1920, height: 1040 }
+      })
+    ).toEqual({ x: 10, y: 10, width: 340, height: 420 })
+  })
+})
+
+describe('createTrackedBounds', () => {
+  it('取整并记录窗口所在显示器的缩放系数与 id', () => {
+    expect(
+      createTrackedBounds(
+        { x: 10.4, y: -3.6, width: 340.5, height: 535.2 },
+        { id: 7, scaleFactor: 1.25 }
+      )
+    ).toEqual({ x: 10, y: -4, width: 341, height: 535, scaleFactor: 1.25, displayId: 7 })
+  })
+})
+
+describe('resolveTrackedBounds', () => {
+  const primary = { x: 100, y: 100, width: 340, height: 535, scaleFactor: 1, displayId: 1 }
+
+  it('跨显示器且尺寸按缩放系数跳变时, 沿用上一次的尺寸并只更新位置', () => {
+    // 250% 显示器上 Chromium 报出的被放大尺寸
+    const measured = {
+      x: -1400,
+      y: 120,
+      width: 878,
+      height: 1352,
+      scaleFactor: 2.5,
+      displayId: 2
+    }
+
+    expect(resolveTrackedBounds(measured, primary)).toEqual({
+      x: -1400,
+      y: 120,
+      width: 340,
+      height: 535,
+      scaleFactor: 2.5,
+      displayId: 2
+    })
+  })
+
+  it('跨显示器但尺寸没有按缩放系数跳变时, 采纳新尺寸', () => {
+    const measured = {
+      x: -1400,
+      y: 120,
+      width: 500,
+      height: 600,
+      scaleFactor: 2.5,
+      displayId: 2
+    }
+
+    expect(resolveTrackedBounds(measured, primary)).toEqual(measured)
+  })
+
+  it('同一显示器内的尺寸变化一律采纳', () => {
+    const measured = { ...primary, width: 700, height: 800 }
+
+    expect(resolveTrackedBounds(measured, primary)).toEqual(measured)
+  })
+
+  it('没有上一次记录时直接采纳本次测量', () => {
+    const measured = {
+      x: 0,
+      y: 0,
+      width: 878,
+      height: 1352,
+      scaleFactor: 2.5,
+      displayId: 2
+    }
+
+    expect(resolveTrackedBounds(measured, null)).toEqual(measured)
   })
 })
 

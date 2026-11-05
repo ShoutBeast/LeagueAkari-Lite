@@ -1,5 +1,6 @@
-import { Rectangle } from 'electron'
 import { makeAutoObservable, observable } from 'mobx'
+
+import type { TrackedWindowBounds } from '../window-position-service'
 
 export class AuxWindowSettings {
   enabled: boolean = true
@@ -45,7 +46,7 @@ export class AuxWindowState {
 
   show: boolean = true
 
-  trackedBounds: Rectangle | null = null
+  trackedBounds: TrackedWindowBounds | null = null
 
   setStatus(status: 'normal' | 'maximized' | 'minimized') {
     this.status = status
@@ -63,7 +64,7 @@ export class AuxWindowState {
     this.show = show
   }
 
-  setTrackedBounds(bounds: Rectangle | null) {
+  setTrackedBounds(bounds: TrackedWindowBounds | null) {
     this.trackedBounds = bounds
   }
 

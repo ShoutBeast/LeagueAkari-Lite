@@ -39,6 +39,98 @@ export function getMaxDisplayDimension() {
   )
 }
 
+/** 保存窗口尺寸时一并记录的显示器信息, 用于识别跨 DPI 显示器造成的尺寸误报 */
+export interface TrackedWindowBounds extends Rectangle {
+  /** 记录该尺寸时窗口所在显示器的缩放系数 */
+  scaleFactor?: number
+
+  /** 记录该尺寸时窗口所在显示器的 id */
+  displayId?: number
+}
+
+/**
+ * 窗口停稳多久之后才记录尺寸。
+ *
+ * 窗口跨到缩放比例不同的显示器时, Chromium 会在若干毫秒内抛出被缩放系数放大或
+ * 缩小过的中间尺寸, 立即记录会把这类瞬时值写进存档。
+ */
+export const TRACKED_BOUNDS_SETTLE_MS = 500
+
+/** 尺寸跳变落在缩放系数比例的该容差内时, 判定为 DPI 换算而非用户手动缩放 */
+const DPI_SCALING_RATIO_TOLERANCE = 0.2
+
+function isNearRatio(value: number, expected: number) {
+  if (!Number.isFinite(value) || !Number.isFinite(expected) || expected <= 0) {
+    return false
+  }
+
+  return Math.abs(value - expected) <= expected * DPI_SCALING_RATIO_TOLERANCE
+}
+
+export function createTrackedBounds(
+  contentBounds: Rectangle,
+  display: Pick<Display, 'id' | 'scaleFactor'>
+): TrackedWindowBounds {
+  return {
+    x: Math.round(contentBounds.x),
+    y: Math.round(contentBounds.y),
+    width: Math.round(contentBounds.width),
+    height: Math.round(contentBounds.height),
+    scaleFactor: display.scaleFactor,
+    displayId: display.id
+  }
+}
+
+/**
+ * 把本次测得的尺寸归一化为可持久化的 DIP 值。
+ *
+ * Chromium 在窗口跨到缩放比例不同的显示器时会按缩放系数放大或缩小报告尺寸,
+ * 即便用户只是移动了窗口。若本次尺寸相对上一次恰好等于两者缩放系数之比,
+ * 判定为 DPI 换算误报, 沿用上一次的尺寸, 只采纳新的位置与显示器信息。
+ */
+export function resolveTrackedBounds(
+  next: TrackedWindowBounds,
+  previous: TrackedWindowBounds | null | undefined
+): TrackedWindowBounds {
+  if (!previous) {
+    return next
+  }
+
+  if (previous.displayId === undefined || next.displayId === undefined) {
+    return next
+  }
+
+  if (previous.displayId === next.displayId) {
+    return next
+  }
+
+  const previousScaleFactor = previous.scaleFactor
+  const nextScaleFactor = next.scaleFactor
+
+  if (!previousScaleFactor || !nextScaleFactor || previousScaleFactor === nextScaleFactor) {
+    return next
+  }
+
+  const expectedRatio = nextScaleFactor / previousScaleFactor
+  const widthRatio = next.width / previous.width
+  const heightRatio = next.height / previous.height
+
+  if (isNearRatio(widthRatio, expectedRatio) && isNearRatio(heightRatio, expectedRatio)) {
+    return {
+      ...next,
+      width: previous.width,
+      height: previous.height
+    }
+  }
+
+  return next
+}
+
+export interface RestoredContentBoundsLimits {
+  /** 目标显示器工作区, 用于裁剪超出屏幕的宽高 */
+  workArea?: Rectangle
+}
+
 /**
  * 净化从存储中恢复的窗口内容区域, 防止脏数据(例如 DPI 切换异常期间误存的值)导致窗口恢复成异常大小。
  * 无法识别的数据返回 null, 由调用方回退到默认尺寸与位置。
@@ -47,7 +139,8 @@ export function sanitizeRestoredContentBounds(
   bounds: Rectangle | null | undefined,
   minWidth: number,
   minHeight: number,
-  maxDisplayDimension: number
+  maxDisplayDimension: number,
+  limits: RestoredContentBoundsLimits = {}
 ): Rectangle | null {
   if (!bounds) {
     return null
@@ -66,11 +159,15 @@ export function sanitizeRestoredContentBounds(
     return null
   }
 
+  const { workArea } = limits
+  const maxWidth = workArea ? Math.max(workArea.width, minWidth) : Number.POSITIVE_INFINITY
+  const maxHeight = workArea ? Math.max(workArea.height, minHeight) : Number.POSITIVE_INFINITY
+
   return {
     x: Math.round(x),
     y: Math.round(y),
-    width: Math.max(Math.round(width), minWidth),
-    height: Math.max(Math.round(height), minHeight)
+    width: Math.min(Math.max(Math.round(width), minWidth), maxWidth),
+    height: Math.min(Math.max(Math.round(height), minHeight), maxHeight)
   }
 }
 

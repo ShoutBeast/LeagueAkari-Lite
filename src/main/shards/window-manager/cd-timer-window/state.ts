@@ -1,5 +1,6 @@
-import { Rectangle } from 'electron'
 import { makeAutoObservable, observable } from 'mobx'
+
+import type { TrackedWindowBounds } from '../window-position-service'
 
 export class CdTimerWindowSettings {
   enabled: boolean = false
@@ -58,7 +59,7 @@ export class CdTimerWindowState {
 
   show: boolean = true
 
-  trackedBounds: Rectangle | null
+  trackedBounds: TrackedWindowBounds | null
 
   /**
    * 支持的游戏模式, 基准时间被硬编码
@@ -92,7 +93,7 @@ export class CdTimerWindowState {
     this.show = show
   }
 
-  setTrackedBounds(bounds: Rectangle | null) {
+  setTrackedBounds(bounds: TrackedWindowBounds | null) {
     this.trackedBounds = bounds
   }
 
