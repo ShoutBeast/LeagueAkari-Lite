@@ -2,6 +2,7 @@ import { is, optimizer } from '@electron-toolkit/utils'
 import '@main/i18n'
 import { initAppLogger } from '@main/logger'
 import { initializeNativeRuntime } from '@main/native'
+import { AceGuardMain } from '@main/shards/ace-guard'
 import { AkariApiMain } from '@main/shards/akari-api'
 import { AkariProtocolMain } from '@main/shards/akari-protocol'
 import { AppCommonMain } from '@main/shards/app-common'
@@ -322,6 +323,8 @@ export function bootstrap() {
     manager.use(RiotClientMain)
 
     // application specific shards
+    // 本地扩展: ACE 进程资源限制
+    manager.use(AceGuardMain)
     manager.use(ClientInstallationMain)
     manager.use(WindowManagerMain)
     manager.use(TrayMain)

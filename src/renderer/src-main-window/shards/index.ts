@@ -1,4 +1,5 @@
 import { createManager } from '@renderer-shared/shards'
+import { AceGuardRenderer } from '@renderer-shared/shards/ace-guard'
 import { AkariApiRenderer } from '@renderer-shared/shards/akari-api'
 import { AkariProtocolRenderer } from '@renderer-shared/shards/akari-protocol'
 import { AppCommonRenderer } from '@renderer-shared/shards/app-common'
@@ -37,6 +38,8 @@ import { SimpleNotificationsRenderer } from './simple-notifications'
 
 const manager = createManager()
 
+// 本地扩展: ACE 进程资源限制
+manager.use(AceGuardRenderer)
 manager.use(AkariIpcRenderer)
 manager.use(AkariApiRenderer)
 manager.use(AkariProtocolRenderer)
