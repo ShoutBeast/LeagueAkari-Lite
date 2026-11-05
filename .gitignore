@@ -1,6 +1,8 @@
 node_modules
 dist
 task
+参考
+tmp
 out
 storybook-static
 bench-results/
@@ -47,3 +49,20 @@ Temporary Items
 
 # others
 .playwright-mcp
+
+# local scratch files
+/tmp/
+/tmp-*
+
+# MSVC intermediate build artifacts
+*.exp
+*.lib
+*.ilk
+*.pdb
+
+# manual backups inside native packages
+native/*/addons-backup/
+native/*/dist-backup/
+
+# packaging output
+/dist-build/
